@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--link rel="stylesheet" href="pjf.css"-->
+    <script src="https://gcore.jsdelivr.net/npm/vue@2"></script>
+    <!--script src="underscore_1_8_3.js" type="text/javascript"></script-->
+    <title>原子物权链演示</title>
+    <style type="text/css">
+        body { background-color: #ffe; word-break: break-all; }
+        div.left { display: inline; box-sizing:border-box; float: left; width: 45%; }
+        div.right { display: inline; border: #fc0 solid 1px; padding: 6px; min-height: 500px;
+            box-sizing:border-box; width: 25%; float: right; margin-left: 8px; }
+        div.seg { display: inline; border: #fc0 solid 1px; padding: 8px; min-height: 50px;
+            width: 100%; }
+        div.title { border-bottom: #fc0 solid 1px; margin-bottom: 6px; padding-bottom: 5px; }
+        div.user { display: inline; border: #fc0 solid 1px; margin: 8px; padding: 8px; width: 60px; float: left; cursor: pointer; }
+        div.userid { color: #888; font-size: x-small; }
+        div.selchar { color: green; }
+        div.chainid { color: #888; font-size: x-small; }
+        div.chainname { color: #666; font-size: small; border-top: #fc0 solid 1px; margin-top: 6px; padding-top: 5px; }
+        div.log { color: #666; font-size: small; }
+        div.act { border: #fc0 solid 2px; padding: 8px; font-size: big; }
+        div.chainview { transition: opacity .6s; position: absolute; background: white; font-size: big; padding: 6px; cursor: auto; }
+        div.block { cursor: pointer; border-top: #fc0 solid 1px; width: 60px; margin-top: 6px; }
+        span.blockidx { margin-right: 8px; font-color: black; font-size: big }
+        .act>span { margin: 6px; }
+        span.closebtn { float: right; font-size: 0.9em; cursor: pointer; }
+    </style>
+</head>
+
+<body>
+<div id='alert_vue' style="font-size:xx-big; margin:30px; color:red;"><b>无法加载 Vue。<br>
+本页面基于 Vue 构建，但无法从 cdn.jsdelivr.net 加载 Vue。可能是被墙了。请尝试通过梯子访问上述网址。</b></div>
+
+<div id='alert_crypto' style="font-size:xx-big; margin:30px; color:red;"><b>crypto.subtle 无效。<br>
+当前浏览器不支持加密运算 SubtleCrypto，请将本网页的 HTML 文件下载到本地，再用 firefox 或 chrome 打开。<br>只在网址前缀为 https: 或 file: 时能运行 SubtleCrypto。</b></div>
+
+<div id="main" style="padding:10px">
+    <div class="left">
+        <div>
+            这里是原子物权链的演示页，对原子物权链不了解者请先<a target="_blank" href="http://acc.guideep.com">阅读文档</a>。<br><br>
+            原子物权链是高度去中心化的区块链技术，基本运行模式是令若干条私有区块链能在人群之中互相转送。设定每条链代表不同的对象，即可实现不同的业务。<br><br>
+            下面首先创建用户，数量为<input type="number" v-model="UserNum" max="6" min="3" style="width:50px;"/>个，
+            <button :disabled="Users.length!==0" @click="InitUsers">确定</button>
+        </div>
+        <div>
+            接着创建区块链，数量为<input type="number" v-model="ChainNum" max="10" min="3" style="width:50px;"/>条，
+            <button :disabled="Chains.length!==0" @click="InitChains">确定</button>
+        </div><br>
+        <div v-show="Chains.length>0">
+            <hr>
+            在操作面板中可以看到用户及每个用户拥有的链。新建的链只有根区块。<br><br>
+            <div class="act">
+                现在，令[<span :style="{color:SelUser?'#636':'#b33'}">{{ SelUser?SelUser.Name:'某个发送者' }}</span>]向
+                [<span :style="{color:SelChain?'#636':'#b33'}">{{ SelChain?SelChain.Name:'某条链' }}</span>]上的
+                [<span :style="{color:SelBlockId?'#636':'#b33'}">{{ SelBlockId?SelBlockId:'某个区块' }}</span>]之后添加区块，以将此链送给
+                [<span :style="{color:SelTarget?'#636':'#b33'}">{{ SelTarget?SelTarget.Name:'某个接收者' }}</span>]。
+            </div>
+            <p>按照下面的步骤，设定上框中所需的四个变量：</p>
+            <p>1、在操作面板上点击用户名，可选择执行发送操作的用户。</p>
+            <p>2、在操作面板上点击区块链，可选择执行此操作的链。选中后可见此链上的所有区块。</p>
+            <p>3、点击选择区块，新区块将加在此区块之后。</p>
+            <p>4、再次在操作面板上点击用户名，可选择接收此链的用户。</p>
+            <p style="font-size:0.9em;">注意，合法的操作必须满足：<br>1、只能把新区块加在区块链最末的区块之后；
+            <br>2、发送者必须是新区块所跟随的区块记载的转移事件中的接收者。
+            <br>若违反上述原则，发送者可能会受到忽略和鄙视，<b>甚至被全网拉黑</b>。</p>
+            <p style="color:red;font-size:0.9em;" v-show="Warning">添加方式不合规：
+            <br>{{ Warning }}<br>若执意添加区块，请再点一次确定。</p>
+            <div><button @click="SubmitAct" :disabled="!(SelUser&&SelChain&&SelBlockId&&SelTarget)">确定</button>
+            <button @click="CancelAct">取消</button></div>
+        </div>
+    </div>
+    <div class="right">
+        <div class="title">事件列表</div>
+        <div class="log" v-for="ln in Logs">{{ ln }}</div>
+    </div>
+    <div class="right">
+        <div class="title">操作面板</div>
+        <div class="users">
+            <div class="user" v-for="user in Users">
+                <div v-show="SelUser&&SelUser.Id===user.Id" class="selchar" title="发送者">⇖ ⇗</div>
+                <div v-show="SelTarget&&SelTarget.Id===user.Id" class="selchar" title="接收者">⇘ ⇙</div>
+                <div @click="SelectUser(user)">
+                    <div>{{ user.Name }}</div>
+                    <div class="userid" :title="user.Id">{{ user.Id.slice( 0, 9 ) + '...' }}</div>
+                </div>
+                <div class="owns" v-for="chain in user.OwnChains">
+                    <div @click="SelectChain(chain)">
+                        <div class="chainname">{{ chain.Name }}</div>
+                        <div class="chainid">
+                            <div>{{ chain.Id.slice( 0, 9 ) + '...' }}</div>
+                            <v-branch :branch="user.GetChainBranch(chain.Id)" @selblk-msg="SelectBlock"
+                            v-if="ShowBranch&&SelChain&&SelChain.Id===chain.Id"></v-chain>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--div class="chains">chains</div-->
+    </div>
+</div>
+
+<script type="text/javascript">
+Date.prototype.Format = function()
+{
+    return this.toLocaleDateString().replace( /\//g, '-' ) + ' ' + this.toTimeString().slice( 0, 8 );
+};
+
+function ABuff2Base64( ab )
+{
+    return btoa( String.fromCharCode( ...new Uint8Array( ab )));
+}
+
+function ABuff2Str16( ab )
+{
+    let hex = '';
+    ( new Uint8Array( ab )).forEach( x => hex += x > 15 ? x.toString( 16 ): '0' + x.toString( 16 ));
+    //console.log( hex );
+    return hex;
+}
+
+function Base642ABuff( b64 )
+{
+    let s = atob( b64 );
+    let ua8 = new Uint8Array( s.length );
+    for( let l = s.length; l-- > 0; )
+    {
+        ua8[l] = s.charCodeAt( l );
+    }
+    return ua8;
+}
+
+async function Hash( raw, hashName )
+{
+    let ua = typeof raw === 'string' ? ( new TextEncoder( 'utf8' ).encode( raw )) : raw;
+    return await crypto.subtle.digest( { name: hashName }, ua );
+}
+
+function GenECDSA()
+{
+    return crypto.subtle.generateKey( { name: "ECDSA", namedCurve: "P-256", }, true, ["sign", "verify"] )
+}
+
+function RandSel( data, n )
+{
+    let selected = [];
+    if( n > data.length || n <= 0 )
+    {
+        n = data.length;
+    }
+    for( ; n--; )
+    {
+        selected.push( data.splice( Math.floor( Math.random() * data.length ), 1 )[0] );
+    }
+    return selected
+}
+
+class User
+{
+    constructor( name )
+    {
+        this.Name = name;
+        this.OwnChains = [];
+        this.LocalBlocks = {};
+        this.BlackList = [];
+        let me = this;
+        return ( async () =>
+        {
+            let key = await GenECDSA();
+            let raw = await crypto.subtle.exportKey( "raw", key.publicKey );
+            me.PubKey = key.publicKey;
+            me.PriKey = key.privateKey;
+            me.PubKeyStr = ABuff2Base64( raw );
+            return me;
+        } )();
+    };
+
+    get Id() { return this.PubKeyStr; };
+
+    async Sign( s )
+    {
+        let ua8 = Base642ABuff( s );
+        return await crypto.subtle.sign( { name: "ECDSA", hash: { name: "SHA-1" }, },
+                                    this.PriKey, ua8 );
+    };
+
+    static async Verify( sig, data, pubKeyS )
+    {
+        console.log( 'Verify', this, sig, data, pubKeyS );
+        let pubK = await crypto.subtle.importKey( "raw", Base642ABuff( pubKeyS ),
+                                { name: "ECDSA", namedCurve: "P-256", }, false, ["verify"] )
+        return crypto.subtle.verify( { name: "ECDSA", hash: { name: "SHA-1" }, }, pubK, Base642ABuff( sig ), data );
+    };
+
+    FindRoot( blockId )
+    {
+        console.log( 'FindRoot', blockId );
+        let Lines = this.LocalBlocks[blockId].Content.split( '\n' );
+        if( Lines[0] == 0 )
+        {
+            return { Id: blockId, Name: Lines[2] };
+        }
+        return this.FindRoot( Lines[4] );
+    };
+
+    async RcvBlock( block )
+    {
+        if( this.LocalBlocks[block.Id] )
+        {
+            if( this.LocalBlocks[block.Id].Content !== block.Content )
+            {
+                V.Log( '区块数据错：' + block.Id );
+                console.log( '区块数据错：', block.Id, this.LocalBlocks[block.Id].Content, block.Content )
+            }
+            return;
+        }
+
+        let Lines = block.Content.split( '\n' );
+        if( Lines[0] > '0' )
+        {
+            let PrevBlock = this.LocalBlocks[Lines[4]];
+            let PrevLines = PrevBlock.Content.split( '\n' );
+            if( this.BlackList.filter( uid => uid == PrevLines[3] ).length > 0 )
+            {
+                if( this.Id != PrevLines[3] )
+                {
+                    V.Log( this.Name + '：发送区块者在黑名单中，区块无效。' );
+                }
+                return;
+            }
+            if( !this.ChkTail( PrevBlock ))
+            {
+                this.BlackList.push( PrevLines[3] );
+                let BlackName = V.GetUser( PrevLines[3] ).Name;
+                if( this.Id != PrevLines[3] )
+                {
+                    V.Log( this.Name + '：发现' + BlackName + '实施双花攻击，严重违反江湖规矩，已拉黑。' );
+                }
+                return;
+            }
+        }
+
+        let RecvBlock = new Block( block.Index, 0, 0, block.Id, block.Content );
+        if( block.Content[0] === '0' )
+        {
+            if( !await RecvBlock.ChkRoot())
+            {
+                V.Log( this.Name + '接收区块验证失败：' + block.Id );
+                return
+            }
+        }
+        else
+        {
+            let prevId = RecvBlock.GetPrevId();
+            let Prev = prevId ? this.LocalBlocks[prevId] : null;
+            if( !Prev )
+            {
+                V.Log( this.Name + '缺少上级区块：' + block.Id );
+                //this.Broadcast( query prev, block.Id );
+                return
+            }
+            let PrevBlock = new Block( Prev.Index, 0, 0, Prev.Id, Prev.Content );
+            console.log( prevId, PrevBlock );
+            let prevOwnerId = PrevBlock.GetOwnerId();    // Id is PubKeyStr
+            if( !await RecvBlock.ChkFollow( prevOwnerId ))
+            {
+                V.Log( this.Name + '接收区块验证失败：' + block.Id );
+                return
+            }
+        }
+        let NewBlock = this.LocalBlocks[block.Id] = block;
+        let Root = this.FindRoot( block.Id );
+        NewBlock.ChainId = Root.Id;
+        if( Lines[3] === this.Id )
+        {
+            this.OwnChains.push( Root )
+        }
+        else
+        {
+            console.log( Root.Id, this.OwnChains );
+            this.OwnChains = this.OwnChains.filter( c => c.Id !== Root.Id );
+            console.log( this.OwnChains.length );
+        }
+    };
+
+    GetChainBranch( chainid )
+    {
+        let Branch = [];
+        let Queue = [this.LocalBlocks[chainid]];
+        let Index = 0;
+        let InChains = [];
+        for( let id in this.LocalBlocks )
+        {
+            if( this.LocalBlocks[id].ChainId == chainid )
+            {
+                InChains.push( this.LocalBlocks[id] );
+            }
+        }
+        //逐层添加区块，以后加分叉
+        console.log( InChains );
+        while( Queue )
+        //for( let i = 0; i++ < 5; )
+        {
+            let CurBlock = Queue.splice( 0, 1 )[0];
+            console.log( Queue.length, CurBlock );
+            if( !CurBlock )
+            {
+                break;
+            }
+            Branch.push( CurBlock );
+            let Follows = InChains.filter( b => b.Index == CurBlock.Index + 1 &&
+                                                b.Content.split( '\n' )[4] == CurBlock.Id );
+            //console.log( CurBlock, Follows );
+            for( let follow of Follows )
+            {
+                Queue.push( follow );
+                //console.log( follow );
+            }
+        }
+        console.log( 'GetChainBranch', this.Name, Branch );
+        return Branch;
+    };
+
+    ChkTail( block )
+    {
+        for( let id in this.LocalBlocks )
+        {
+            if( this.LocalBlocks[id].Content.split( '\n' )[4] == block.Id )
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+}
+
+class Block
+{
+    constructor( index, data, prevId, id, content )
+    {
+        //console.log( index, data, prevId );
+        this.Index = index;
+        if( id )    // for rebuild
+        {
+            this.id = id;
+            this.Content = content;
+            return this;
+        }
+        let TimeStr = new Date().Format();
+        this.id = '';
+        this.Content = [index, TimeStr, data, prevId || ''].join( '\n' );
+        let me = this;
+        return ( async () =>
+        {
+            let hash = await Hash( me.Content, 'SHA-1' )
+            me.Hash = ABuff2Base64( hash );
+            if( me.Index === 0 )
+            {
+                me.Id = me.Hash;
+            }
+            return me;
+        } )();
+    };
+
+    Copy()
+    {
+        return { Id: this.Id, Content: this.Content, Index: this.Index };
+    };
+
+    async ChkRoot()   //根区块的 Id 是哈希值，后续区块是签名值，验证方式不同。
+    {
+        let Id = this.Id;
+        let hash = await Hash( this.Content, 'SHA-1' );
+        return Id == ABuff2Base64( hash );
+    };
+
+    GetPrevId()
+    {
+        console.assert( this.Index != 0 );
+        let Lines = this.Content.split( '\n' );
+        return Lines[4];
+    };
+
+    GetOwnerId()
+    {
+        console.assert( this.Index != 0 );
+        let Lines = this.Content.split( '\n' );
+        return Lines[3];
+    };
+
+    async ChkFollow( pubKeyS )
+    {
+        let hash = await Hash( this.Content, 'SHA-1' )
+        return await User.Verify( this.Id, hash, pubKeyS );
+    };
+
+    get Id() { return this.id; };
+    set Id( id )
+    {
+        this.id = this.id || id;
+    };
+}
+
+class BlockChain
+{
+    constructor( name, firstOwner )
+    {
+        this.Name = name;
+        let me = this;
+        return ( async () =>
+        {
+            let FirstBlock = await new Block( 0, [name, firstOwner].join( '\n' ));
+            me.Blocks = [FirstBlock];
+            me.Id = FirstBlock.Id;
+            return me;
+        } )();
+    };
+}
+
+Vue.component( 'v-branch', {
+    props: ['branch'],
+    template: '<div v-show="Show" class="chainview"><div>链中区块</div><div @click="" v-for="block in Branch">\
+            <div class="block" :style="{\'color\':block.Index==SelIdx?\'#339\':\'#666\'}" @click.stop="SelectBlock(block)"><span class="blockidx">{{ block.Index }}\
+            </span>{{ block.Id.slice( 0, 25 ) + "..." }}</div></div>\
+            &ensp;<span class="closebtn" title="关闭" @click.stop="Close">⇧</span></div>',
+    data: function()
+    {
+        //console.log( this.branch, 'ssss' );
+        return { Branch: this.branch, Show: 1, SelIdx: -1 };
+    },
+
+    //watch: {
+        //msgs: function( val ){ this.Msgs = val.slice( 0, 8 ) },
+    //},
+
+    methods: {
+        Close: function()
+        {
+            this.Show = 0;
+        },
+        SelectBlock: function( block )
+        {
+            this.SelIdx = block.Index;
+            this.$emit( 'selblk-msg', block.Id );
+        },
+    },
+} );
+
+let V = new Vue( {
+    el: '#main',
+    data: { UserNum: 3, ChainNum: 5, Users:[], Chains: [], Logs: [], SelUser: '', SelChain: '',
+            SelBlockId: '', SelTarget: '', ShowBranch: true, Warning: '', },
+    methods: {
+        InitUsers: async function()
+        {
+            this.Log( '开始创建' + this.UserNum + '名初始用户。' );
+            let DefaultNames = RandSel( ['黄药师', '欧阳锋', '段智兴', '洪七公', '王重阳', '林朝英'], this.UserNum );
+            this.Users = await Promise.all( DefaultNames.map( n => new User( n )));
+            this.Logs.push( '创建用户：' + DefaultNames.join( '，' ) + '。' );
+        },
+
+        GetUser: function( userId )
+        {
+            return this.Users.filter( u => u.Id === userId )[0];
+        },
+
+        InitChains: async function()
+        {
+            this.Log( '开始创建' + this.ChainNum + '条区块链。' );
+            let DefaultNames = RandSel( ['《九阴真经》', '打狗棒', '《武穆遗书》', '玄铁剑', '《玉女心经》',
+                                        '汗血宝马', '《蛤蟆功》', '软猬甲', '《奇门遁甲》', '神雕'], this.ChainNum );
+            this.Chains = await Promise.all( DefaultNames.map( async n =>
+            {
+                let Owner = this.Users[Math.floor( Math.random() * this.Users.length )];
+                let Chain = await new BlockChain( n, Owner.Id );
+                await this.Broadcast( Chain.Blocks[0] );
+                this.Logs.push( '为' + Owner.Name + '创建链：' + Chain.Name + '。' );
+                return Chain;
+            } ));
+        },
+
+        SelectUser: function( user )
+        {
+            if( !this.SelUser )
+            {
+                if( this.SelTarget.Id == user.Id )
+                {
+                    this.Log( '操作者与接收者不能是同一人。' );
+                    return;
+                }
+                this.SelUser = user;
+                this.Log( '选定操作者为' + user.Name );
+            }
+            else
+            {
+                if( this.SelUser.Id == user.Id )
+                {
+                    this.Log( '操作者与接收者不能是同一人。' );
+                    return;
+                }
+                this.SelTarget = user;
+                this.Log( '选定接收者为' + user.Name );
+            }
+            this.Warning = '';
+            //this.$forceUpdate();
+        },
+
+        SelectChain: function( chain )
+        {
+            this.SelChain = chain;
+            this.SelBlockId = null;
+            this.Warning = '';
+            this.Log( '选定要操作的链为' + chain.Name );
+        },
+
+        SelectBlock: function( blockId )
+        {
+            console.log( 'SelectBlock', blockId );
+            this.SelBlockId = blockId;
+            this.Warning = '';
+            this.Log( '选定区块为' + blockId );
+        },
+
+        //CloseBranch: function()
+        //{
+            //this.ShowBranch = false;
+        //},
+
+        GetSelUserName: function()
+        {
+            let User = this.GetUser( this.SelUser );
+            return User ? User.Name : "";
+        },
+
+        CancelAct: function()
+        {
+            this.SelUser = this.SelChain = this.SelBlockId = this.SelTarget = '';
+            this.Warning = '';
+        },
+
+        SubmitAct: async function()
+        {
+            let SelBlock = this.SelUser.LocalBlocks[this.SelBlockId];
+            if( !SelBlock )
+            {
+                console( 'SubmitAct error', SelBlock, this.SelBlockId );
+                return;
+            }
+            if( !this.Warning && !this.ChkSubmit( SelBlock ))
+            {
+                return;
+            }
+            console.log( 'submit' );
+            this.Warning = '';
+            let v = this;
+            let data = ['transfer', this.SelTarget.Id].join( '\n' );
+            let NewBlock = await new Block( SelBlock.Index + 1, data, SelBlock.Id );
+            let sign = await this.SelUser.Sign( NewBlock.Hash );
+
+            this.Log( '添加新区块并广播：' + NewBlock.Id );
+            NewBlock.Id = ABuff2Base64( sign );
+            await this.Broadcast( NewBlock.Copy());
+            this.SelUser = this.SelChain = this.SelBlockId = this.SelTarget = '';
+            this.Warning = '';
+        },
+
+        ChkSubmit: function( block )
+        {
+            let Index = -1;
+            let Lines = block.Content.split( '\n' );
+
+            if( Lines[3] != this.SelUser.Id )
+            {
+                this.Warning = '目标用户无权向目标区块后添加区块。';
+                return false;
+            }
+
+            if( !this.SelUser.ChkTail( block ))
+            {
+                this.Warning = '目标区块不在链尾，在此添加属于严重违规。';
+                return false;
+            }
+
+            for( ;; )
+            {
+                if( Index >= 0 && Index != block.Index + 1 )
+                {
+                    this.Warning = '目标区块没有连接到目标链上：' + Index;
+                    return false;
+                }
+                Index = block.Index
+                if( Index == 0 )
+                {
+                    break
+                }
+                console.log( block );
+                block = this.SelUser.LocalBlocks[Lines[4]];
+                console.log( Lines[4], block );
+                Lines = block.Content.split( '\n' );
+            }
+
+            if( block.Index != 0 || block.Id != this.SelChain.Id )
+            {
+                this.Warning = '目标区块没有连接到目标链上：' + block.Index;
+                return false;
+            }
+            return true;
+        },
+
+        Broadcast: async function( block )
+        {
+            await Promise.all( this.Users.map( u => u.RcvBlock( block )));
+        },
+
+        Log: function( s )
+        {
+            let TimeStr = new Date().Format();
+            this.Logs.push( TimeStr + '  ' + s );
+        },
+    },
+
+    created()
+    {
+        document.body.removeChild( document.body.getElementsByTagName( 'div' )[0] );
+        if( crypto.subtle )
+        {
+            for( let div of document.body.getElementsByTagName( 'div' ))
+            {
+                if( div.id == 'alert_crypto' )
+                {
+                    document.body.removeChild( div );
+                }
+            }
+        }
+    },
+} );
+
+
+</script>
+</body>
+</html>
