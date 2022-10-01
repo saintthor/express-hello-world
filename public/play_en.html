@@ -23,6 +23,7 @@
         div.chainname { color: #666; font-size: small; border-top: #fc0 solid 1px; margin-top: 6px; padding-top: 5px; }
         div.log { color: #666; font-size: small; word-break: break-all; }
         div.act { border: #fc0 solid 2px; padding: 8px; font-size: big; }
+        div.act>span:nth-child(3) { word-break: break-all; }
         div.chainview { transition: opacity .6s; position: absolute; background: white; font-size: big; padding: 6px; cursor: auto; }
         div.block { cursor: pointer; border-top: #fc0 solid 1px; width: 60px; margin-top: 6px; word-break: break-all; }
         span.blockidx { margin-right: 8px; font-color: black; font-size: big }
@@ -58,7 +59,7 @@ SubtleCrypto can run only for a https:// or file:/// page.</b></div>
             Now you see the players and blockchains in the pannel. There is only one block in each blockchain.<br><br>
             <div class="act">
                 Let us make[<span :style="{color:SelUser?'#636':'#b33'}">{{ SelUser?SelUser.Name:'some sender' }}</span>] add a new block on
-                [<span :style="{color:SelChain?'#636':'#b33'}">{{ SelChain?SelChain.Name:'some blockchain' }}</span>] after
+                [<span :style="{color:SelChain?'#636':'#b33'}">{{ SelChain?SelChain.Name:'some blockchain' }}</span>] following
                 [<span :style="{color:SelBlockId?'#636':'#b33'}">{{ SelBlockId?SelBlockId:'some block' }}</span>] to transfer the blockchain to
                 [<span :style="{color:SelTarget?'#636':'#b33'}">{{ SelTarget?SelTarget.Name:'some receiver' }}</span>].
             </div>
@@ -192,8 +193,8 @@ let V = new Vue( {
         InitChains: async function()
         {
             this.Log( 'creating' + this.ChainNum + 'blockchains.' );
-            let NameIter = RandSel( ['aegis', 'Argo', 'Golden Fleece', 'Sword of Damocles', 'Pandora\'s Box',
-                                        'staff of Hermes', 'cornucopia', 'Thunderbolt', 'Trident', 'Caduceus'], this.ChainNum );
+            let NameIter = RandSel( ['Aegis', 'Argo', 'Golden Fleece', 'Sword of Damocles', 'Pandora\'s Box',
+                                        'Staff of Hermes', 'Cornucopia', 'Apollo’s Bow', 'Trident', 'Caduceus'], this.ChainNum );
             this.Chains = await Promise.all( Array.from( new Array( Number( this.ChainNum ))).map( async _ =>
             {
                 let Owner = this.Users[Math.floor( Math.random() * this.UserNum )];
