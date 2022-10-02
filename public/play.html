@@ -20,7 +20,8 @@
         div.selchar { color: green; }
         div.chainid { color: #888; font-size: x-small; }
         div.chainname { color: #666; font-size: small; border-top: #fc0 solid 1px; margin-top: 6px; padding-top: 5px; }
-        div.log { color: #666; font-size: small; }
+        div.log { color: #666; font-size: small; margin-top: 4px; }
+        div.logarea { overflow-y: auto; height: 600px; }
         div.act { border: #fc0 solid 2px; padding: 8px; font-size: big; }
         div.chainview { transition: opacity .6s; position: absolute; background: white; font-size: big; padding: 6px; cursor: auto; }
         div.block { cursor: pointer; border-top: #fc0 solid 1px; width: 60px; margin-top: 6px; }
@@ -76,7 +77,9 @@
     </div>
     <div class="right">
         <div class="title">事件记录</div>
-        <div class="log" v-for="ln in Logs">{{ ln }}</div>
+        <div class="logarea">
+            <div class="log" v-for="ln in Logs">{{ ln }}</div>
+        </div>
     </div>
     <div class="right">
         <div class="title">操作面板</div>
