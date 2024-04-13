@@ -77,7 +77,7 @@
     </div>
     <div class="right">
         <div class="title">事件记录</div>
-        <div class="logarea">
+        <div class="logarea" ref="LogArea">
             <div class="log" v-for="ln in Logs">{{ ln }}</div>
         </div>
     </div>
@@ -178,7 +178,7 @@ let V = new Vue( {
             this.Peers.forEach( p => p.AddNeighbors( ...this.Peers ));
             //let DefaultNames = RandSel( ['黄药师', '欧阳锋', '段智兴', '洪七公', '王重阳', '林朝英'], this.UserNum );
             this.Users = await Promise.all( Array.from( new Array( Number( this.UserNum ))).map( _ => new User()));
-            let NameIter = RandSel( ['黄药师', '欧阳锋', '段智兴', '洪七公', '王重阳', '林朝英'], this.UserNum );
+            let NameIter = RandSel( ['孙悟空', '猪八戒', '观音', '如来', '太上老君', '玉帝', '王母', '镇元子', '沙僧', '龙王', '阎王', '李天王', '哪吒', '唐僧'], this.UserNum );
             this.Users.forEach(( u, i ) =>
             {
                 Peers[Math.floor( Math.random() * Num )].AddUser( u );
@@ -200,8 +200,8 @@ let V = new Vue( {
         InitChains: async function()
         {
             this.Log( '开始创建' + this.ChainNum + '条区块链。' );
-            let NameIter = RandSel( ['《九阴真经》', '打狗棒', '《武穆遗书》', '玄铁剑', '《玉女心经》',
-                                        '寒玉床', '《蛤蟆功》', '软猬甲', '《奇门遁甲》', '神雕'], this.ChainNum );
+            let NameIter = RandSel( ['金箍棒', '九齿钉耙', '玉净瓶', '金刚琢', '金铙', '七星剑', '二气瓶', '锦襕袈裟', '定风珠',
+                                        '人参果', '芭蕉扇', '紫金铃', '紫金葫芦', '幌金绳'], this.ChainNum );
             this.Chains = await Promise.all( Array.from( new Array( Number( this.ChainNum ))).map( async _ =>
             {
                 let Owner = this.Users[Math.floor( Math.random() * this.UserNum )];
@@ -294,6 +294,7 @@ let V = new Vue( {
             this.ChkLogInfos( Infos );
             this.SelUser = this.SelChain = this.SelBlockId = this.SelTarget = '';
             this.Warning = '';
+            this.$refs.LogArea.scrollTop = this.$refs.LogArea.scrollHeight - this.$refs.LogArea.clientHeight;
         },
 
         ChkSubmit: function( block )
@@ -359,7 +360,7 @@ let V = new Vue( {
                         this.Logs.push( u.Name + '：区块添加者在黑名单中，区块无效。' );
                         break;
                     case 'double spending.':
-                        this.Logs.push( u.Name + '：发现区块添加者实施双花攻击，严重违反江湖规矩，已拉黑。' );
+                        this.Logs.push( u.Name + '：发现区块添加者实施双花攻击，犯了天条，已拉黑。' );
                         break;
                     case 'verify failed.':
                         console.log( '????' );

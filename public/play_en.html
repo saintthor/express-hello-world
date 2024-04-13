@@ -42,8 +42,7 @@ SubtleCrypto can run only for a https:// or file:/// page.</b></div>
 <div id="main" style="padding:10px">
     <div class="left">
         <div>
-            This page is a demo for the ownership blockchains, which is REAL decentralized. You may have read the
-            <a target="_blank" href="https://saintthor.medium.com/">document</a>.<br><br>
+            This page is a demo for the Atomic Ownership Blockchains, which is the only REAL decentralized technology in the world. You may have read the <a target="_blank" href="https://saintthor.medium.com/">document</a>.<br><br>
             <a target="_blank" href="play.html" style="margin-right: 28px">中文版</a>
             <a target="_blank" href="https://github.com/saintthor/decentralization">Code on github</a><br><br>
             There are many private blockchains. Each is an NFT and can be transfered from one player to another by adding a block.
@@ -80,7 +79,7 @@ SubtleCrypto can run only for a https:// or file:/// page.</b></div>
     </div>
     <div class="right">
         <div class="title">Logs</div>
-        <div class="logarea">
+        <div class="logarea" ref="LogArea">
             <div class="log" v-for="ln in Logs">{{ ln }}</div>
         </div>
     </div>
@@ -285,6 +284,7 @@ let V = new Vue( {
             this.ChkLogInfos( Infos );
             this.SelUser = this.SelChain = this.SelBlockId = this.SelTarget = '';
             this.Warning = '';
+            this.$refs.LogArea.scrollTop = this.$refs.LogArea.scrollHeight - this.$refs.LogArea.clientHeight;
         },
 
         ChkSubmit: function( block )
